@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>志望学部ならべかえ</title>
+<style>
+  :root { --bg:#f4f5f8; --card:#fff; --text:#1c1f24; --muted:#6b7280; --line:#e2e5ea; --accent:#2457c5; --accent-soft:#e8efff; --ng:#b42318; --ngbg:#fdf0ee; --off:#c9cdd5; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12151a; --card:#1c2027; --text:#e8eaed; --muted:#9aa3af; --line:#2f3641; --accent:#7aa2ff; --accent-soft:#222c44; --ng:#ff8a80; --ngbg:#35201e; --off:#4a5260; }
+  }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  input, select, textarea { -webkit-user-select:text; user-select:text; font-size:16px !important; } /* 16px未満だとiOSが入力時に拡大する */
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.6 -apple-system,"Hiragino Sans",sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:22px; margin:6px 0 4px; }
+  h2 { font-size:15px; margin:26px 0 8px; color:var(--muted); font-weight:600; letter-spacing:.03em; }
+  .notice { background:var(--ngbg); color:var(--ng); border-radius:10px; padding:10px 14px; font-size:13px; margin:8px 0 0; }
+  .note { color:var(--muted); font-size:13px; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:6px 14px; }
+  .sub { font-size:12px; color:var(--muted); margin:10px 0 2px; }
+  /* スイッチ */
+  .sw { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; cursor:pointer; }
+  .sw + .sw { border-top:1px solid var(--line); }
+  .sw input { appearance:none; -webkit-appearance:none; flex:none; width:46px; height:28px; border-radius:14px; background:var(--off); position:relative; transition:background .15s; cursor:pointer; margin:0; }
+  .sw input::after { content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .sw input:checked { background:var(--accent); }
+  .sw input:checked::after { transform:translateX(18px); }
+  /* セグメント */
+  .chips { display:flex; flex-wrap:wrap; gap:8px; padding:10px 0; }
+  .chip { padding:9px 16px; border:1px solid var(--line); border-radius:999px; background:var(--bg); cursor:pointer; user-select:none; }
+  .chip { display:inline-flex; align-items:center; gap:8px; }
+  .chip input { display:none; }
+  .chip::before { content:""; width:20px; height:20px; border:2px solid var(--muted); border-radius:5px; flex:none; display:inline-flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; line-height:1; color:#fff; box-sizing:border-box; }
+  .chip.none::before { border-radius:50%; }
+  .chip:has(input:checked)::before { content:"✓"; background:rgba(255,255,255,.25); border-color:#fff; }
+  .multi { font-size:12px; font-weight:400; color:var(--accent); background:var(--accent-soft); padding:1px 8px; border-radius:9px; margin-left:6px; }
+  .chip:has(input:checked) { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  .chip.none:has(input:checked) { background:var(--muted); border-color:var(--muted); }
+  [hidden] { display:none !important; }
+  .seg { display:flex; gap:6px; padding:10px 0; }
+  .seg label { flex:1; text-align:center; padding:9px 0; border:1px solid var(--line); border-radius:10px; cursor:pointer; background:var(--bg); }
+  .seg input { display:none; }
+  .seg .ic { margin-right:6px; vertical-align:-6px; }
+  .seg .gm { color:#2b6fd6; } .seg .gf { color:#d6457f; }
+  .seg .gm:has(input:checked) { background:#2b6fd6; border-color:#2b6fd6; }
+  .seg .gf:has(input:checked) { background:#d6457f; border-color:#d6457f; }
+  .seg label:has(input:checked) { color:#fff; }
+  .seg label:has(input:checked) { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  /* 英語 */
+  .eng { display:grid; grid-template-columns:7.5em 5.5em 1fr; gap:8px; align-items:center; padding:7px 0; }
+  .eng + .eng { border-top:1px solid var(--line); }
+  input[type=number], input[type=text], select { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--text); }
+  input[type=number] { width:100%; }
+  .ym select { margin-right:4px; }
+  /* ボタン */
+  .btn { font:inherit; padding:10px 18px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--text); cursor:pointer; }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; width:100%; margin-top:18px; padding:13px; }
+  .btn.small { padding:6px 12px; font-size:14px; }
+  .err { color:var(--ng); font-size:14px; min-height:1.4em; margin:10px 0 0; }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; }
+  /* 志望順 */
+  .item { display:flex; gap:10px; align-items:flex-start; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin:8px 0; }
+  .row { display:flex; gap:8px; align-items:flex-start; margin:8px 0; }
+  .row .item { flex:1; min-width:0; margin:0; }
+  .ranks { padding-top:11px; }
+  .rk { display:flex; align-items:center; justify-content:flex-end; width:34px; height:48px; font-weight:700; color:var(--accent); font-size:18px; }
+  .line { min-height:48px; align-items:center; }
+  .row .item { transition:transform .18s ease; }
+  .row .item.dragging { position:relative; z-index:10; transition:none; box-shadow:0 8px 24px rgba(0,0,0,.25); }
+  .grip { cursor:grab; color:var(--muted); user-select:none; -webkit-user-select:none; font-size:20px; line-height:1.4; padding:10px 4px 10px 12px; margin:-6px -4px -6px 0; border-left:1px solid var(--line); touch-action:none; align-self:stretch; display:flex; align-items:center; }
+  .item { -webkit-touch-callout:none; }
+  .body { flex:1; min-width:0; }
+  .line { display:flex; gap:10px; padding:0; }
+  .line + .line { border-top:1px dashed var(--line); }
+  .uni { font-size:12px; color:var(--muted); }
+  .code { font-size:12px; color:var(--muted); margin-left:6px; }
+  .badge { font-size:11px; padding:0 7px; border-radius:9px; color:#fff; vertical-align:1px; }
+  .badge.im { background:#7a3b8f; } .badge.kt { background:#2e7d4f; }
+  .ni { width:16px; height:16px; vertical-align:-3px; }
+  .mv { display:flex; flex-direction:column; gap:4px; align-self:center; }
+  .mv button { display:flex; padding:5px; cursor:pointer; background:var(--bg); border:1px solid var(--line); border-radius:8px; }
+  .mv button:first-child { color:#d19a00; }
+  .mv button:last-child { color:var(--muted); }
+  .flip { padding:6px 10px; cursor:pointer; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; font:inherit; }
+  .ng { background:var(--ngbg); border-color:transparent; }
+  .why { color:var(--ng); font-size:13px; margin-top:4px; }
+  #copybox { margin-top:10px; }
+  #copybox textarea { width:100%; height:180px; font:inherit; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--text); }
+</style>
+</head>
+<body>
+<main>
+  <h1>志望学部ならべかえ</h1>
+  <p class="notice">判定ロジックは手入力のため誤りがある可能性があります。<u><b>必ず進学のしおりを自分で確認してください。</b></u>本アプリの利用により生じた結果について、作成者は一切責任を負いません。</p>
+
+  <div id="survey">
+    <h2>性別</h2>
+    <div class="panel"><div class="seg">
+      <label class="gm"><input type="radio" name="gender" value="m"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><circle cx="12" cy="5" r="3"/><path d="M8 10h8a2 2 0 0 1 2 2v5h-2.5v5h-2.2v-5h-2.6v5H8.5v-5H6v-5a2 2 0 0 1 2-2z"/></svg>男</label>
+      <label class="gf"><input type="radio" name="gender" value="f"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><circle cx="12" cy="5" r="3"/><path d="M12 9.5c1.6 0 2.6.9 3 2.2l3 7.3h-3.2V22h-1.6v-3h-2.4v3H9.2v-3H6l3-7.3c.4-1.3 1.4-2.2 3-2.2z"/></svg>女</label>
+    </div></div>
+
+    <div id="sec2" hidden>
+    <h2>2年選択で履修した科目を選択<span class="multi">複数選択可</span></h2>
+    <div class="panel"><div class="chips">
+      <label class="chip"><input type="checkbox" id="m2b" data-g="a">数学B</label><label class="chip"><input type="checkbox" id="chem" data-g="a">化学</label><label class="chip none"><input type="checkbox" id="none2" data-g="a" data-none>どれも履修していない</label>
+    </div></div>
+    </div>
+
+    <div id="sec3" hidden>
+    <h2>3年選択で履修した科目を選択<span class="multi">複数選択可</span></h2>
+    <div class="panel"><div class="chips">
+      <label class="chip"><input type="checkbox" id="m3" data-g="b">数学III</label><label class="chip"><input type="checkbox" id="phy" data-g="b">物理</label><label class="chip"><input type="checkbox" id="bio" data-g="b">生物</label><label class="chip"><input type="checkbox" id="earth" data-g="b">地学</label><label class="chip none"><input type="checkbox" id="none3" data-g="b" data-none>どれも履修していない</label>
+    </div></div>
+    </div>
+
+    <div id="secExam" hidden>
+    <h2>理工学部の資格試験<span class="multi">複数選択可</span></h2>
+    <div class="panel"><div class="chips">
+      <label class="chip"><input type="checkbox" id="exam" data-g="c">電気系 学力確認試験を受験した</label><label class="chip"><input type="checkbox" id="qual" data-g="c">機械系 資格試験に合格した</label><label class="chip none"><input type="checkbox" id="noneE" data-g="c" data-none>どちらも受験していない</label>
+    </div></div>
+    </div>
+
+    <div id="secEng" hidden>
+    <h2>英語スコア(未受験は空欄)</h2>
+    <div class="panel">
+      <div class="eng"><span>TOEIC L&amp;R</span><input type="number" id="toeic" placeholder="点"><span class="ym" data-for="toeic_d"></span></div>
+      <div class="eng"><span>TOEFL iBT</span><input type="number" id="ibt" placeholder="点"><span class="ym" data-for="ibt_d"></span></div>
+      <div class="eng"><span>TOEFL ITP</span><input type="number" id="itp" placeholder="点"><span class="ym" data-for="itp_d"></span></div>
+      <div class="eng"><span>IELTS</span><input type="number" id="ielts" step="0.5" placeholder="点"><span class="ym" data-for="ielts_d"></span></div>
+      <div class="eng"><label class="sw" style="padding:0;grid-column:1/3;justify-content:flex-start;gap:10px"><span>英検1級 合格</span><input type="checkbox" id="eiken"></label><span class="ym" data-for="eiken_d"></span></div>
+      <input type="hidden" id="toeic_d"><input type="hidden" id="ibt_d"><input type="hidden" id="itp_d"><input type="hidden" id="ielts_d"><input type="hidden" id="eiken_d">
+    </div>
+
+    <p id="err" class="err"></p>
+    <button class="btn primary" id="go">この条件で志望順づくりへ →</button>
+    </div>
+  </div>
+
+  <div id="main2" hidden>
+    <div class="bar" style="margin-top:14px"><button class="btn small" id="back">← 条件を修正</button><button class="btn small" id="copy">結果をコピー</button></div>
+    <div id="copybox" hidden><p class="note">自動コピーできなかったため、下の文字を選択してコピーしてください。</p><textarea id="copytext" readonly></textarea></div>
+    <p class="note"><svg class="ni" style="color:#d19a00" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5L3 7zm2 13h14v2H5v-2z"/></svg>で1番上へ、<svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zM5 9h14l-1 11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 9zm4 2v8h2v-8H9zm4 0v8h2v-8h-2z"/></svg>で1番下へ移動します。</p>
+    <div id="list"></div>
+    <h2>出願条件を満たしていない学科</h2>
+    <div id="ngList"></div>
+  </div>
+</main>
+<script>
+// [大学, 学部, 学科・コース, コード]
+const DEPARTMENTS = [
+  ["同志社大学", "神学部", "神学科", "01"],
+  ["同志社大学", "文学部", "英文学科", "03"],
+  ["同志社大学", "文学部", "哲学科", "04"],
+  ["同志社大学", "文学部", "美学芸術学科", "05"],
+  ["同志社大学", "文学部", "文化史学科", "06"],
+  ["同志社大学", "文学部", "国文学科", "07"],
+  ["同志社大学", "社会学部", "社会学科", "10"],
+  ["同志社大学", "社会学部", "社会福祉学科", "11"],
+  ["同志社大学", "社会学部", "メディア学科", "12"],
+  ["同志社大学", "社会学部", "産業関係学科", "13"],
+  ["同志社大学", "社会学部", "教育文化学科", "14"],
+  ["同志社大学", "法学部", "法律学科", "20"],
+  ["同志社大学", "法学部", "政治学科", "21"],
+  ["同志社大学", "経済学部", "経済学科", "23"],
+  ["同志社大学", "商学部", "商学科 商学総合コース", "25"],
+  ["同志社大学", "商学部", "商学科 フレックス複合コース", "26"],
+  ["同志社大学", "政策学部", "政策学科", "28"],
+  ["同志社大学", "政策学部", "政策学科 国際教育インスティテュート 国際専修コース", "29"],
+  ["同志社大学", "文化情報学部", "文化情報学科", "35"],
+  ["同志社大学", "理工学部", "インテリジェント情報工学科", "40"],
+  ["同志社大学", "理工学部", "情報システムデザイン学科", "41"],
+  ["同志社大学", "理工学部", "電気工学科", "42"],
+  ["同志社大学", "理工学部", "電子工学科", "43"],
+  ["同志社大学", "理工学部", "機械システム工学科", "44"],
+  ["同志社大学", "理工学部", "機械理工学科", "45"],
+  ["同志社大学", "理工学部", "機能分子・生命化学科", "46"],
+  ["同志社大学", "理工学部", "化学システム創成工学科", "47"],
+  ["同志社大学", "理工学部", "環境システム学科", "48"],
+  ["同志社大学", "理工学部", "数理システム学科", "49"],
+  ["同志社大学", "生命医科学部", "医工学科", "55"],
+  ["同志社大学", "生命医科学部", "医情報学科", "56"],
+  ["同志社大学", "生命医科学部", "医生命システム学科", "57"],
+  ["同志社大学", "スポーツ健康科学部", "スポーツ健康科学科", "60"],
+  ["同志社大学", "心理学部", "心理学科", "62"],
+  ["同志社大学", "グローバル・コミュニケーション学部", "グローバル・コミュニケーション学科 英語コース", "65"],
+  ["同志社大学", "グローバル・コミュニケーション学部", "グローバル・コミュニケーション学科 中国語コース", "66"],
+  ["同志社大学", "グローバル地域文化学部", "グローバル地域文化学科 ヨーロッパコース", "70"],
+  ["同志社大学", "グローバル地域文化学部", "グローバル地域文化学科 アジア・太平洋コース", "71"],
+  ["同志社大学", "グローバル地域文化学部", "グローバル地域文化学科 アメリカコース", "72"],
+  ["同志社女子大学", "表象文化学部", "英語英文学科", "80"],
+  ["同志社女子大学", "表象文化学部", "日本語日本文学科", "81"],
+  ["同志社女子大学", "学芸学部", "音楽学科", "83"],
+  ["同志社女子大学", "学芸学部", "メディア創造学科", "84"],
+  ["同志社女子大学", "学芸学部", "国際教養学科", "85"],
+  ["同志社女子大学", "現代社会学部", "社会システム学科", "87"],
+  ["同志社女子大学", "現代社会学部", "現代こども学科", "88"],
+  ["同志社女子大学", "生活科学部", "人間生活学科", "90"],
+  ["同志社女子大学", "生活科学部", "食物栄養科学科 食デザイン専攻", "91"],
+  ["同志社女子大学", "生活科学部", "食物栄養科学科 管理栄養士専攻", "92"],
+  ["同志社女子大学", "薬学部", "医療薬学科", "94"],
+  ["同志社女子大学", "看護学部", "看護学科", "96"],
+];
+
+</script>
+<script>
+// iOSのピンチ拡大を止める(viewportのuser-scalable=noはiOSでは無視されるため)
+["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault()));
+</script>
+<script>
+const $ = id => document.getElementById(id);
+// 校地(今出川 / 京田辺)。下記以外の学部は今出川
+const KYOTANABE = new Set(["文化情報学部","理工学部","生命医科学部","スポーツ健康科学部","心理学部","グローバル・コミュニケーション学部","学芸学部","現代社会学部","薬学部","看護学部"]);
+const campusOf = d => KYOTANABE.has(d[1]) ? "京田辺" : "今出川";
+const PAIRS = [["42","43"],["44","45"]];
+const byCode = Object.fromEntries(DEPARTMENTS.map(d => [d[3], d]));
+// 並び替え単位。ペアは離さずセットで動くが、希望枠は別々
+const UNITS = []; const seen = new Set();
+for (const d of DEPARTMENTS) {
+  if (seen.has(d[3])) continue;
+  const codes = PAIRS.find(p => p.includes(d[3])) || [d[3]];
+  codes.forEach(c => seen.add(c));
+  UNITS.push({ id: codes.join("+"), codes });
+}
+const unitById = Object.fromEntries(UNITS.map(u => [u.id, u]));
+const defaultOrder = () => UNITS.map(u => u.id);
+
+const LS = "gakubu-v4";
+let state = { order: defaultOrder(), memo: {}, prof: {}, flip: {} };
+// 保存: localStorage と Cookie の両方に書き、読み込み時は新しい方を採用する
+// (iOS Safariは未使用が続くとどちらも消すことがあるため二重化。Cookieは4KB制限のため分割)
+const CK = "gakubu_", CK_CHUNK = 3000;
+function readCookies() {
+  try {
+    const m = Object.fromEntries(document.cookie.split("; ").map(c => { const i = c.indexOf("="); return [c.slice(0, i), c.slice(i + 1)]; }));
+    const n = +m[CK + "n"]; if (!n) return null;
+    let s = ""; for (let i = 0; i < n; i++) { if (m[CK + i] == null) return null; s += m[CK + i]; }
+    return JSON.parse(decodeURIComponent(s));
+  } catch (e) { return null; }
+}
+function writeCookies(json) {
+  try {
+    const enc = encodeURIComponent(json), n = Math.ceil(enc.length / CK_CHUNK);
+    const opt = "; max-age=31536000; path=/; SameSite=Lax" + (location.protocol === "https:" ? "; Secure" : "");
+    for (let i = 0; i < n; i++) document.cookie = `${CK}${i}=${enc.slice(i * CK_CHUNK, (i + 1) * CK_CHUNK)}${opt}`;
+    document.cookie = `${CK}n=${n}${opt}`;
+    for (let i = n; i < n + 5; i++) document.cookie = `${CK}${i}=; max-age=0; path=/`;
+  } catch (e) {}
+}
+function readLS() { try { return JSON.parse(localStorage.getItem(LS)); } catch (e) { return null; } }
+function save() {
+  state.t = Date.now();
+  const json = JSON.stringify(state);
+  try { localStorage.setItem(LS, json); } catch (e) {}
+  writeCookies(json);
+}
+{
+  const cands = [readLS(), readCookies()].filter(Boolean).sort((a, b) => (b.t || 0) - (a.t || 0));
+  if (cands[0]) state = Object.assign(state, cands[0]);
+}
+try { navigator.storage?.persist?.(); } catch (e) {}
+// iOSはバックグラウンド移行時に確実に書いておく
+addEventListener("pagehide", save);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") save(); });
+
+// ---- 年月プルダウン ----
+const YEARS = [2022, 2023, 2024, 2025, 2026];
+document.querySelectorAll(".ym").forEach(el => {
+  const hid = $(el.dataset.for);
+  el.innerHTML = `<select data-y><option value="">年</option>${YEARS.map(y => `<option value="${y}">${y}年</option>`).join("")}</select>` +
+    `<select data-m><option value="">月</option>${Array.from({length: 12}, (_, i) => `<option value="${i + 1}">${i + 1}月</option>`).join("")}</select>`;
+  el.addEventListener("change", () => {
+    const y = el.querySelector("[data-y]").value, m = el.querySelector("[data-m]").value;
+    hid.value = y && m ? `${y}-${String(m).padStart(2, "0")}` : "";
+    onInput();
+  });
+});
+function syncYm() {
+  document.querySelectorAll(".ym").forEach(el => {
+    const [y, m] = ($(el.dataset.for).value || "-").split("-");
+    el.querySelector("[data-y]").value = y || "";
+    el.querySelector("[data-m]").value = m ? String(+m) : "";
+  });
+}
+
+// ---- 入力 ----
+const SW = ["none2","none3","noneE","m2b","chem","m3","phy","bio","earth","exam","qual","eiken"];
+const FIELDS = ["toeic","toeic_d","ibt","ibt_d","itp","itp_d","ielts","ielts_d","eiken_d"];
+function loadProf() {
+  const p = state.prof;
+  SW.forEach(k => $(k).checked = !!p[k]);
+  FIELDS.forEach(k => $(k).value = p[k] ?? "");
+  document.querySelectorAll("[name=gender]").forEach(r => r.checked = r.value === (p.gender || ""));
+  syncYm();
+}
+function readProf() {
+  const p = {};
+  SW.forEach(k => p[k] = $(k).checked);
+  FIELDS.forEach(k => p[k] = $(k).value);
+  p.gender = document.querySelector("[name=gender]:checked")?.value || "";
+  state.prof = p; save();
+}
+const LABEL = {m2b:"2年選択「数学B」",chem:"2年選択「化学」",m3:"3年選択「数学III」",phy:"3年選択「物理」",bio:"3年選択「生物」",earth:"3年選択「地学」"};
+
+// ---- 判定 ----
+function judge(code, p) {
+  const why = [];
+  const need = (ok, msg) => { if (!ok) why.push(msg); };
+  const n = k => p[k] === "" || p[k] == null ? null : Number(p[k]);
+  const yes = k => !!p[k];
+  const ym = since => since.slice(0, 7);
+  const fmt = since => since.replace(/-0?/g, "/");
+  const ok = (score, min, date, since) => score !== null && score >= min && !!date && date >= ym(since);
+  const eng = (since, rules, label) => {
+    const hit = rules.some(([t, min]) => t === "eiken" ? (p.eiken && p.eiken_d && p.eiken_d >= ym(since)) : ok(n(t), min, p[t + "_d"], since));
+    need(hit, `【英語】${label}を、${fmt(since)}以降の受験で満たしていない`);
+  };
+  const anyScore = since => {
+    const hit = ["toeic","ibt","itp"].some(t => n(t) !== null && p[t + "_d"] && p[t + "_d"] >= ym(since));
+    need(hit, `【英語】TOEIC/TOEFLのスコアが必要(${fmt(since)}以降の受験分がない)`);
+  };
+  const all = ks => ks.filter(k => !yes(k)).forEach(k => why.push(`【履修不足】${LABEL[k]}を履修していない`));
+  const any = ks => { if (!ks.some(yes)) why.push(`【履修不足】${ks.map(k => LABEL[k]).join("・")}のどれも履修していない(いずれか1つ必須)`); };
+
+  if (+code >= 80) need(p.gender !== "m", "同志社女子大学");
+
+  switch (code) {
+    case "03": eng("2024-04-02", [["toeic",500],["ibt",52],["itp",470]], "TOEIC500/iBT52/ITP470以上"); break;
+    case "23": case "25": case "26": anyScore("2026-01-01"); break;
+    case "60": anyScore("2025-01-01"); break;
+    case "65": eng("2024-04-02", [["toeic",500],["ibt",54],["itp",480]], "TOEIC500/iBT54/ITP480以上"); break;
+    case "70": case "71": case "72":
+      eng("2024-04-01", [["toeic",500],["ibt",45],["itp",450],["ielts",4.5]], "TOEIC500/iBT45/ITP450/IELTS4.5以上"); break;
+    case "29": eng("2024-04-01", [["toeic",730],["ibt",79],["ielts",6.0],["eiken",0]], "TOEIC730/iBT79/IELTS6.0/英検1級"); break;
+    case "42": case "43":
+      all(["m2b","m3","chem","phy"]);
+      if (!yes("exam")) why.push("【試験】電気系 学力確認試験(10月)を受験していない"); break;
+    case "40": case "41": case "46": case "47": all(["m2b","m3","chem"]); any(["phy","bio"]); break;
+    case "48": case "49": all(["m2b","m3","chem"]); any(["phy","bio","earth"]); break;
+    case "44": case "45": if (!yes("qual")) why.push("【試験】機械系 資格試験(10月)に合格していない"); break;
+    case "55": all(["m2b","m3","chem","phy"]); break;
+    case "56": case "57": all(["m2b","m3"]); any(["chem","phy","bio"]); break;
+    case "94": case "91": case "92": any(["chem","bio"]); break;
+  }
+  return why;
+}
+const unitReasons = u => [...new Set(u.codes.flatMap(c => judge(c, state.prof)))];
+
+// ---- 描画 ----
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const orderedCodes = u => state.flip?.[u.id] ? [...u.codes].reverse() : u.codes;
+function card(u, rank, ng) {
+  const lines = orderedCodes(u).map(c => { const d = byCode[c], cp = campusOf(d);
+    return `<div class="line"><div><span class="uni">${d[0]} ${d[1]}</span> <span class="badge ${cp === "京田辺" ? "kt" : "im"}">${cp}</span><br><b>${esc(d[2])}</b><span class="code">${c}</span></div></div>`; }).join("");
+  const rs = ng ? unitReasons(u) : [];
+  const why = rs.length ? `<div class="why">${rs.map(x => "・" + esc(x)).join("<br>")}</div>` : "";
+  const item = `<div class="item ${ng ? "ng" : ""}" data-id="${u.id}">
+    <div class="body">${lines}${why}</div>
+    ${!ng && u.codes.length > 1 ? `<button class="flip" data-flip="${u.id}" title="セット内の上下を入れ替え">⇅</button>` : ""}
+    ${ng ? "" : `<div class="mv"><button data-top="${u.id}" title="1番上へ" aria-label="1番上へ"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5L3 7zm2 13h14v2H5v-2z"/></svg></button><button data-bottom="${u.id}" title="1番下へ" aria-label="1番下へ"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zM5 9h14l-1 11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 9zm4 2v8h2v-8H9zm4 0v8h2v-8h-2z"/></svg></button></div><span class="grip">⋮⋮</span>`}
+  </div>`;
+  // 順位番号はカードの外(枠は固定、カードだけが動く)
+  return ng ? item : `<div class="row"><div class="ranks">${u.codes.map((_, i) => `<span class="rk">${rank + i}</span>`).join("")}</div>${item}</div>`;
+}
+const visibleIds = () => state.order.filter(id => unitReasons(unitById[id]).length === 0);
+function render() {
+  const vis = visibleIds();
+  let rk = 1;
+  $("list").innerHTML = vis.map(id => { const s = card(unitById[id], rk, false); rk += unitById[id].codes.length; return s; }).join("") || '<p class="note">該当なし</p>';
+  const ng = state.order.filter(id => !vis.includes(id));
+  $("ngList").innerHTML = ng.map(id => card(unitById[id], 0, true)).join("") || '<p class="note">なし</p>';
+  syncRanks();
+}
+// 学科名が折り返して行の高さが変わっても、順位番号を各行に揃える
+function syncRanks() {
+  document.querySelectorAll("#list .row").forEach(row => {
+    const lines = row.querySelectorAll(".line");
+    row.querySelectorAll(".rk").forEach((rk, i) => { if (lines[i]) rk.style.height = lines[i].offsetHeight + "px"; });
+  });
+}
+addEventListener("resize", syncRanks);
+function setVisibleOrder(newVis) {
+  state.order = [...newVis, ...state.order.filter(id => !newVis.includes(id))]; save(); render();
+}
+// ---- イベント ----
+const answered = (p, g) => g === "a" ? (p.m2b || p.chem || p.none2) : g === "b" ? (p.m3 || p.phy || p.bio || p.earth || p.none3) : (p.exam || p.qual || p.noneE);
+function updateSteps() {
+  const p = state.prof, a = !!p.gender, b = a && answered(p, "a"), c = b && answered(p, "b"), d = c && answered(p, "c");
+  $("sec2").hidden = !a; $("sec3").hidden = !b; $("secExam").hidden = !c; $("secEng").hidden = !d;
+  return d;
+}
+function onInput(e) {
+  const t = e?.target;
+  if (t?.dataset?.g && t.checked) { // 「どれも〜ない」と個別選択は排他
+    const isNone = "none" in t.dataset;
+    document.querySelectorAll(`[data-g=${t.dataset.g}]`).forEach(x => { if (x !== t && (isNone || "none" in x.dataset)) x.checked = false; });
+  }
+  readProf(); updateSteps(); render(); $("err").textContent = "";
+}
+document.querySelectorAll("#survey input").forEach(el => el.addEventListener("input", onInput));
+$("list").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.flip) { state.flip[b.dataset.flip] = !state.flip[b.dataset.flip]; save(); render(); }
+  if (b.dataset.top) moveEnd(b.dataset.top, true);
+  if (b.dataset.bottom) moveEnd(b.dataset.bottom, false);
+});
+
+function moveEnd(id, top) {
+  const v = visibleIds().filter(x => x !== id);
+  setVisibleOrder(top ? [id, ...v] : [...v, id]);
+}
+
+// ドラッグ&ドロップ(マウス・タッチ共通。⋮⋮のつまみを掴んで動かす)
+// 掴んだカードは指に追従し、他のカードは場所を空けるように避ける。順位番号は動かない
+let drag = null;
+$("list").addEventListener("pointerdown", e => {
+  const grip = e.target.closest(".grip"); if (!grip) return;
+  e.preventDefault();
+  try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+  const info = [...$("list").querySelectorAll(".row")].map(r => {
+    const b = r.getBoundingClientRect(), item = r.querySelector(".item");
+    return { id: item.dataset.id, item, mid: b.top + scrollY + b.height / 2, h: b.height + 8 };
+  });
+  const i0 = info.findIndex(x => x.id === grip.closest(".item").dataset.id);
+  drag = { info, i0, t: i0, y: e.clientY, y0: e.clientY + scrollY };
+  info[i0].item.classList.add("dragging");
+  drag.timer = setInterval(() => { // 画面端で自動スクロール
+    if (drag.y < 70) scrollBy(0, -12); else if (drag.y > innerHeight - 70) scrollBy(0, 12);
+    dragUpdate();
+  }, 16);
+});
+function dragUpdate() {
+  if (!drag) return;
+  const { info, i0 } = drag, H = info[i0].h;
+  const dy = drag.y + scrollY - drag.y0;
+  info[i0].item.style.transform = `translateY(${dy}px)`;
+  const center = info[i0].mid + dy;
+  const t = info.filter((x, j) => j !== i0 && x.mid < center).length;
+  if (t === drag.t) return;
+  drag.t = t;
+  info.forEach((x, j) => {
+    if (j === i0) return;
+    const shift = t > i0 && j > i0 && j <= t ? -H : t < i0 && j >= t && j < i0 ? H : 0;
+    x.item.style.transform = shift ? `translateY(${shift}px)` : "";
+  });
+}
+$("list").addEventListener("pointermove", e => { if (drag) { drag.y = e.clientY; dragUpdate(); } });
+function endDrag(commit) {
+  if (!drag) return;
+  clearInterval(drag.timer);
+  const { info, i0, t } = drag; drag = null;
+  if (commit && t !== i0) {
+    const v = info.map(x => x.id); const [id] = v.splice(i0, 1); v.splice(t, 0, id);
+    setVisibleOrder(v);
+  } else render();
+}
+$("list").addEventListener("pointerup", () => endDrag(true));
+$("list").addEventListener("pointercancel", () => endDrag(false));
+
+function listText() {
+  let n = 0;
+  return visibleIds().flatMap(id => orderedCodes(unitById[id]).map(c => `${++n}. ${byCode[c][0] === "同志社女子大学" ? "(同女)" : ""}${byCode[c][1]} ${byCode[c][2]}`)).join("\n");
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  try {
+    const ta = document.createElement("textarea"); ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(ta); ta.select(); const ok = document.execCommand("copy"); ta.remove(); return ok;
+  } catch (e) { return false; }
+}
+$("copy").onclick = async () => {
+  const text = listText(), btn = $("copy");
+  if (await copyText(text)) { $("copybox").hidden = true; btn.textContent = "コピーしました ✓"; setTimeout(() => btn.textContent = "結果をコピー", 1500); }
+  else { $("copybox").hidden = false; const ta = $("copytext"); ta.value = text; ta.focus(); ta.select(); }
+};
+
+function show(done) {
+  $("survey").hidden = done; $("main2").hidden = !done; if (done) syncRanks(); window.scrollTo(0, 0);
+  state.done = done; save();
+}
+$("go").onclick = () => {
+  readProf();
+  if (!updateSteps()) {
+    $("err").textContent = "上から順にすべて答えてください。";
+    return;
+  }
+  render(); show(true);
+};
+$("back").onclick = () => show(false);
+loadProf(); updateSteps(); render(); show(!!state.done);
+</script>
+</body>
+</html>
