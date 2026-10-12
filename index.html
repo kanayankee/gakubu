@@ -71,10 +71,13 @@
   .rk { display:flex; align-items:center; justify-content:flex-end; width:34px; height:48px; font-weight:700; color:var(--accent); font-size:18px; }
   .line { min-height:48px; align-items:center; }
   .row .item { transition:transform .18s ease; }
+  .row .item.landing { animation:land .45s cubic-bezier(.2,.8,.2,1); }
+  @keyframes land { from { transform:translateY(-40px) scale(.96); opacity:0; } to { transform:none; opacity:1; } }
   .row .item.fling { transition:transform .34s cubic-bezier(.55,0,1,.6), opacity .34s ease-in; transform:translateY(160px) rotate(5deg) scale(.92); opacity:0; pointer-events:none; }
   .row .item.dragging { position:relative; z-index:10; transition:none; box-shadow:0 8px 24px rgba(0,0,0,.25); }
-  .grip { cursor:grab; color:var(--muted); user-select:none; -webkit-user-select:none; font-size:20px; line-height:1.4; padding:10px 4px 10px 12px; margin:-6px -4px -6px 0; border-left:1px solid var(--line); touch-action:none; align-self:stretch; display:flex; align-items:center; }
+  .grip { cursor:grab; color:var(--muted); user-select:none; -webkit-user-select:none; font-size:20px; line-height:1.4; padding:10px 4px 10px 12px; margin:-6px -4px -6px 0; border-left:1px solid var(--line); touch-action:pan-y; align-self:stretch; display:flex; align-items:center; }
   .item { -webkit-touch-callout:none; }
+  .grip.arming { color:var(--accent); background:var(--accent-soft); }
   .body { flex:1; min-width:0; }
   .line { display:flex; gap:10px; padding:0; }
   .line + .line { border-top:1px dashed var(--line); }
@@ -87,6 +90,8 @@
   .mv button { display:flex; padding:5px; cursor:pointer; background:var(--bg); border:1px solid var(--line); border-radius:8px; }
   .mv button:first-child { color:#d19a00; }
   .mv button:last-child { color:var(--muted); }
+  .flip { align-self:center; }
+  .line.swapping { position:relative; z-index:2; background:var(--accent-soft); border-radius:8px; }
   .flip { padding:6px 10px; cursor:pointer; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; font:inherit; }
   .ng { background:var(--ngbg); border-color:transparent; }
   .why { color:var(--ng); font-size:13px; margin-top:4px; }
@@ -229,7 +234,39 @@ for (const d of DEPARTMENTS) {
   UNITS.push({ id: codes.join("+"), codes });
 }
 const unitById = Object.fromEntries(UNITS.map(u => [u.id, u]));
-const defaultOrder = () => UNITS.map(u => u.id);
+// 2025年度 同志社大学への推薦者数(需要の目安)
+const INFO = ["40", "41"]; // インテリジェント情報工学科・情報システムデザイン学科(文化情報学科"35"と並べる)
+const DEMAND = { "01":1, "03":3,"04":3,"05":2,"06":5,"07":7, "10":5,"11":6,"12":5,"13":4,"14":1, "20":58,"21":12, "23":45,
+  "25":40,"26":3, "28":20,"29":1, "35":10, "40":5,"41":6,"42":5,"43":2,"44":4,"45":3,"46":2,"47":2,"48":3,"49":2,
+  "55":3,"56":4,"57":3, "60":7, "62":10, "65":1,"66":1, "70":4,"71":3,"72":3 };
+// 初期順: 学部ごとにまとまり(同じ学部は離さない)、
+//   ①回答から察した相性が高い学部 → ②推薦者数の多い学部 → 神学部 → 同志社女子大学(一番下)
+// 学部内は 相性 → 推薦者数 → 表の順。score = {学科コード: 相性点}(英語資格は使わない)
+function computeOrder(score = {}, mergeInfo = false) {
+  const uAff = u => Math.max(...u.codes.map(c => score[c] || 0));
+  const uDem = u => u.codes.reduce((s, c) => s + (DEMAND[c] || 0), 0);
+  const facOf = u => { const d = byCode[u.codes[0]]; return d[0] === "同志社女子大学" ? "同女" : d[1]; };
+  const facs = new Map();
+  UNITS.forEach((u, i) => {
+    const f = facOf(u); if (!facs.has(f)) facs.set(f, { name: f, units: [], idx: i });
+    facs.get(f).units.push({ u, i, aff: uAff(u), dem: uDem(u) });
+  });
+  const list = [...facs.values()].map(f => {
+    // 情報系(文化情報・インテリジェント情報・情報システムデザイン)は隣り合わせにするため、理工学部では情報系の2学科を先頭に
+    const info = x => mergeInfo && f.name === "理工学部" && INFO.includes(x.u.codes[0]) ? 0 : 1;
+    f.units.sort((a, b) => info(a) - info(b) || b.aff - a.aff || b.dem - a.dem || a.i - b.i);
+    f.aff = Math.max(...f.units.map(x => x.aff)); f.dem = f.units.reduce((s, x) => s + x.dem, 0);
+    f.tail = f.name === "同女" ? 2 : f.name === "神学部" ? 1 : 0;
+    return f;
+  });
+  list.sort((a, b) => a.tail - b.tail || (b.aff > 0) - (a.aff > 0) || b.aff - a.aff || b.dem - a.dem || a.idx - b.idx);
+  if (mergeInfo) { // 文化情報学部を理工学部のすぐ手前へ(学部のまとまりは崩さない)
+    const bun = list.findIndex(f => f.name === "文化情報学部"), ri = list.findIndex(f => f.name === "理工学部");
+    if (bun >= 0 && ri >= 0) { const [f] = list.splice(bun, 1); list.splice(list.findIndex(x => x.name === "理工学部"), 0, f); }
+  }
+  return list.flatMap(f => f.units.map(x => x.u.id));
+}
+const defaultOrder = () => computeOrder();
 
 const LS = "gakubu-v4";
 let state = { order: defaultOrder(), memo: {}, prof: {}, flip: {} };
@@ -357,7 +394,7 @@ const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'
 const orderedCodes = u => state.flip?.[u.id] ? [...u.codes].reverse() : u.codes;
 function card(u, rank, ng) {
   const lines = orderedCodes(u).map(c => { const d = byCode[c], cp = campusOf(d);
-    return `<div class="line"><div><span class="uni">${d[0]} ${d[1]}</span> <span class="badge ${cp === "京田辺" ? "kt" : "im"}">${cp}</span><br><b>${esc(d[2])}</b><span class="code">${c}</span></div></div>`; }).join("");
+    return `<div class="line" data-code="${c}"><div><span class="uni">${d[0]} ${d[1]}</span> <span class="badge ${cp === "京田辺" ? "kt" : "im"}">${cp}</span><br><b>${esc(d[2])}</b><span class="code">${c}</span></div></div>`; }).join("");
   const rs = ng ? unitReasons(u) : [];
   const why = rs.length ? `<div class="why">${rs.map(x => "・" + esc(x)).join("<br>")}</div>` : "";
   const item = `<div class="item ${ng ? "ng" : ""}" data-id="${u.id}">
@@ -385,8 +422,45 @@ function syncRanks() {
   });
 }
 addEventListener("resize", syncRanks);
-function setVisibleOrder(newVis) {
-  state.order = [...newVis, ...state.order.filter(id => !newVis.includes(id))]; save(); render();
+// 並べ替え。各カードが元の位置から新しい位置へ滑らかに動く(FLIP)。skip=この動きを付けないカード
+function setVisibleOrder(newVis, opts = {}) {
+  const firstTop = {};
+  document.querySelectorAll("#list .item").forEach(it => firstTop[it.dataset.id] = it.getBoundingClientRect().top);
+  state.order = [...newVis, ...state.order.filter(id => !newVis.includes(id))]; state.touched = true; save(); render();
+  let maxDist = 0;
+  const moved = [];
+  document.querySelectorAll("#list .item").forEach(it => {
+    const id = it.dataset.id;
+    if (id === opts.skip) { it.classList.add("landing"); return; }
+    const dy = (firstTop[id] ?? it.getBoundingClientRect().top) - it.getBoundingClientRect().top;
+    if (Math.abs(dy) < 2) return;
+    it.style.transition = "none"; it.style.transform = `translateY(${dy}px)`;
+    moved.push([it, Math.abs(dy)]); maxDist = Math.max(maxDist, Math.abs(dy));
+  });
+  if (!moved.length) return;
+  const dur = Math.min(.8, Math.max(.35, maxDist / 1800 + .25));
+  requestAnimationFrame(() => requestAnimationFrame(() => moved.forEach(([it, d]) => {
+    it.style.zIndex = d === maxDist ? 5 : "";
+    it.style.transition = `transform ${dur}s cubic-bezier(.2,.8,.2,1)`; it.style.transform = "";
+    setTimeout(() => { it.style.transition = ""; it.style.zIndex = ""; }, dur * 1000 + 50);
+  })));
+}
+// 回答に合わせた初期順(手で並べ替える前だけ適用)。相性のよい学科ほど上に
+const SCIENCE = ["40","41","42","43","44","45","46","47","48","49","55","56","57"];
+const AFFINITY = {
+  phy:   { "42":2, "43":2, "44":2, "45":2, "40":1, "41":1, "49":1, "55":1 },
+  bio:   { "46":2, "56":2, "57":2, "55":1, "48":1 },
+  chem:  { "46":2, "47":2, "94":2, "91":1, "92":1, "55":1 },
+  earth: { "48":2, "49":1 },
+};
+function applyDefaultOrder() {
+  if (state.touched) return;
+  const p = state.prof, score = {};
+  for (const k of Object.keys(AFFINITY)) if (p[k]) for (const [c, v] of Object.entries(AFFINITY[k])) score[c] = (score[c] || 0) + v;
+  // 数学B・数学IIIを履修していれば理系志向とみなし、理系学部の学科に下駄をはかせる
+  if (p.m2b && p.m3) SCIENCE.forEach(c => score[c] = (score[c] || 0) + 1);
+  state.order = computeOrder(score, !!(p.m2b && p.m3));
+  save();
 }
 // ---- イベント ----
 const answered = (p, g) => g === "a" ? (p.m2b || p.chem || p.none2) : g === "b" ? (p.m3 || p.phy || p.bio || p.earth || p.none3) : (p.exam || p.qual || p.noneE);
@@ -406,19 +480,37 @@ function onInput(e) {
 document.querySelectorAll("#survey input").forEach(el => el.addEventListener("input", onInput));
 $("list").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.flip) { state.flip[b.dataset.flip] = !state.flip[b.dataset.flip]; save(); render(); }
-  if (b.dataset.top) moveEnd(b.dataset.top, true);
-  if (b.dataset.bottom) { // 下へ飛ばされるように落として、最下位へ
-    const item = b.closest(".item");
+  if (b.dataset.flip) { // 2行が入れ替わる動き
+    const id = b.dataset.flip, sel = `#list .item[data-id="${id}"] .line`;
+    const first = {}; document.querySelectorAll(sel).forEach(l => first[l.dataset.code] = l.getBoundingClientRect().top);
+    state.flip[id] = !state.flip[id]; state.touched = true; save(); render();
+    const lines = [...document.querySelectorAll(sel)];
+    lines.forEach(l => { l.style.transition = "none"; l.style.transform = `translateY(${first[l.dataset.code] - l.getBoundingClientRect().top}px)`; l.classList.add("swapping"); });
+    requestAnimationFrame(() => requestAnimationFrame(() => lines.forEach(l => {
+      l.style.transition = "transform .4s cubic-bezier(.3,1.3,.5,1)"; l.style.transform = "";
+      setTimeout(() => { l.style.transition = ""; l.classList.remove("swapping"); }, 450);
+    })));
+  }
+  if (b.dataset.top) { // 最上位まで駆け上がる
+    moveEnd(b.dataset.top, true);
+    scrollTo({ top: Math.max(0, $("list").offsetTop - 90), behavior: "smooth" });
+  }
+  if (b.dataset.bottom) { // 下へ飛ばされて、後ろのカードがぬるっと詰めてくる → 最下位に着地
+    const item = b.closest(".item"), row = item.closest(".row");
     if (item.classList.contains("fling")) return;
     item.classList.add("fling");
-    setTimeout(() => moveEnd(b.dataset.bottom, false), 340);
+    const H = row.getBoundingClientRect().height + 8;
+    for (let n = row.nextElementSibling; n; n = n.nextElementSibling) {
+      const it = n.querySelector?.(".item"); if (!it) continue;
+      it.style.transition = "transform .34s cubic-bezier(.2,.8,.2,1)"; it.style.transform = `translateY(${-H}px)`;
+    }
+    setTimeout(() => moveEnd(b.dataset.bottom, false, true), 340);
   }
 });
 
-function moveEnd(id, top) {
+function moveEnd(id, top, landing) {
   const v = visibleIds().filter(x => x !== id);
-  setVisibleOrder(top ? [id, ...v] : [...v, id]);
+  setVisibleOrder(top ? [id, ...v] : [...v, id], landing ? { skip: id } : {});
 }
 
 // ドラッグ&ドロップ(マウス・タッチ共通。⋮⋮のつまみを掴んで動かす)
@@ -439,20 +531,18 @@ function startDrag(item, e) {
     dragUpdate();
   }, 16);
 }
-// 開始方法: ⋮⋮のつまみ=即開始 / マウス=カードのどこでも即開始 / タッチ=カードを長押し(押したまま動かすとスクロール扱い)
-const LONG_PRESS_MS = 350;
+// 開始方法: ⋮⋮のつまみを長押ししたときだけ(カード本体は起点にしない)。長押し中に動かすとスクロール扱い
+const LONG_PRESS_MS = 200;
 let pending = null;
-const cancelPending = () => { if (pending) { clearTimeout(pending.timer); pending = null; } };
+const cancelPending = () => { if (pending) { clearTimeout(pending.timer); pending.grip.classList.remove("arming"); pending = null; } };
 $("list").addEventListener("pointerdown", e => {
-  const item = e.target.closest(".item");
-  if (!item || e.target.closest("button")) return;
-  if (e.target.closest(".grip") || e.pointerType === "mouse") {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    e.preventDefault(); startDrag(item, e); return;
-  }
+  const grip = e.target.closest(".grip");
+  if (!grip || (e.pointerType === "mouse" && e.button !== 0)) return;
   cancelPending();
-  const p = { x: e.clientX, y: e.clientY };
-  p.timer = setTimeout(() => { pending = null; startDrag(item, { pointerId: e.pointerId, clientY: p.y }); }, LONG_PRESS_MS);
+  const item = grip.closest(".item");
+  const p = { grip, x: e.clientX, y: e.clientY };
+  grip.classList.add("arming");
+  p.timer = setTimeout(() => { cancelPending(); startDrag(item, { pointerId: e.pointerId, clientY: p.y }); }, LONG_PRESS_MS);
   pending = p;
 });
 // ドラッグ開始後は画面スクロールを止める(iOSはpassive:falseのtouchmoveで止める必要がある)
@@ -515,7 +605,7 @@ $("go").onclick = () => {
     $("err").textContent = "上から順にすべて答えてください。";
     return;
   }
-  render(); show(true);
+  applyDefaultOrder(); render(); show(true);
 };
 $("back").onclick = () => show(false);
 loadProf(); updateSteps(); render(); show(!!state.done);
