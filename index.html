@@ -7,7 +7,7 @@
 <style>
   :root { color-scheme: light; --bg:#f4f5f8; --card:#fff; --text:#1c1f24; --muted:#6b7280; --line:#e2e5ea; --accent:#2457c5; --accent-soft:#e8efff; --ng:#b42318; --ngbg:#fdf0ee; --off:#c9cdd5; }
   * { box-sizing:border-box; }
-  html { -webkit-text-size-adjust:100%; }
+  html { -webkit-text-size-adjust:100%; overscroll-behavior-y:contain; }
   body { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
   input, select, textarea { -webkit-user-select:text; user-select:text; font-size:16px !important; } /* 16px未満だとiOSが入力時に拡大する */
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.6 -apple-system,"Hiragino Sans",sans-serif; }
@@ -71,6 +71,7 @@
   .rk { display:flex; align-items:center; justify-content:flex-end; width:34px; height:48px; font-weight:700; color:var(--accent); font-size:18px; }
   .line { min-height:48px; align-items:center; }
   .row .item { transition:transform .18s ease; }
+  .row .item.fling { transition:transform .34s cubic-bezier(.55,0,1,.6), opacity .34s ease-in; transform:translateY(160px) rotate(5deg) scale(.92); opacity:0; pointer-events:none; }
   .row .item.dragging { position:relative; z-index:10; transition:none; box-shadow:0 8px 24px rgba(0,0,0,.25); }
   .grip { cursor:grab; color:var(--muted); user-select:none; -webkit-user-select:none; font-size:20px; line-height:1.4; padding:10px 4px 10px 12px; margin:-6px -4px -6px 0; border-left:1px solid var(--line); touch-action:none; align-self:stretch; display:flex; align-items:center; }
   .item { -webkit-touch-callout:none; }
@@ -407,7 +408,12 @@ $("list").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.flip) { state.flip[b.dataset.flip] = !state.flip[b.dataset.flip]; save(); render(); }
   if (b.dataset.top) moveEnd(b.dataset.top, true);
-  if (b.dataset.bottom) moveEnd(b.dataset.bottom, false);
+  if (b.dataset.bottom) { // 下へ飛ばされるように落として、最下位へ
+    const item = b.closest(".item");
+    if (item.classList.contains("fling")) return;
+    item.classList.add("fling");
+    setTimeout(() => moveEnd(b.dataset.bottom, false), 340);
+  }
 });
 
 function moveEnd(id, top) {
@@ -418,22 +424,39 @@ function moveEnd(id, top) {
 // ドラッグ&ドロップ(マウス・タッチ共通。⋮⋮のつまみを掴んで動かす)
 // 掴んだカードは指に追従し、他のカードは場所を空けるように避ける。順位番号は動かない
 let drag = null;
-$("list").addEventListener("pointerdown", e => {
-  const grip = e.target.closest(".grip"); if (!grip) return;
-  e.preventDefault();
-  try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+function startDrag(item, e) {
+  try { item.setPointerCapture(e.pointerId); } catch (_) {}
   const info = [...$("list").querySelectorAll(".row")].map(r => {
-    const b = r.getBoundingClientRect(), item = r.querySelector(".item");
-    return { id: item.dataset.id, item, mid: b.top + scrollY + b.height / 2, h: b.height + 8 };
+    const bb = r.getBoundingClientRect(), it = r.querySelector(".item");
+    return { id: it.dataset.id, item: it, mid: bb.top + scrollY + bb.height / 2, h: bb.height + 8 };
   });
-  const i0 = info.findIndex(x => x.id === grip.closest(".item").dataset.id);
+  const i0 = info.findIndex(x => x.id === item.dataset.id);
   drag = { info, i0, t: i0, y: e.clientY, y0: e.clientY + scrollY };
   info[i0].item.classList.add("dragging");
+  navigator.vibrate?.(12);
   drag.timer = setInterval(() => { // 画面端で自動スクロール
     if (drag.y < 70) scrollBy(0, -12); else if (drag.y > innerHeight - 70) scrollBy(0, 12);
     dragUpdate();
   }, 16);
+}
+// 開始方法: ⋮⋮のつまみ=即開始 / マウス=カードのどこでも即開始 / タッチ=カードを長押し(押したまま動かすとスクロール扱い)
+const LONG_PRESS_MS = 350;
+let pending = null;
+const cancelPending = () => { if (pending) { clearTimeout(pending.timer); pending = null; } };
+$("list").addEventListener("pointerdown", e => {
+  const item = e.target.closest(".item");
+  if (!item || e.target.closest("button")) return;
+  if (e.target.closest(".grip") || e.pointerType === "mouse") {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault(); startDrag(item, e); return;
+  }
+  cancelPending();
+  const p = { x: e.clientX, y: e.clientY };
+  p.timer = setTimeout(() => { pending = null; startDrag(item, { pointerId: e.pointerId, clientY: p.y }); }, LONG_PRESS_MS);
+  pending = p;
 });
+// ドラッグ開始後は画面スクロールを止める(iOSはpassive:falseのtouchmoveで止める必要がある)
+document.addEventListener("touchmove", e => { if (drag) e.preventDefault(); }, { passive: false });
 function dragUpdate() {
   if (!drag) return;
   const { info, i0 } = drag, H = info[i0].h;
@@ -449,7 +472,10 @@ function dragUpdate() {
     x.item.style.transform = shift ? `translateY(${shift}px)` : "";
   });
 }
-$("list").addEventListener("pointermove", e => { if (drag) { drag.y = e.clientY; dragUpdate(); } });
+$("list").addEventListener("pointermove", e => {
+  if (pending && Math.hypot(e.clientX - pending.x, e.clientY - pending.y) > 10) cancelPending();
+  if (drag) { drag.y = e.clientY; dragUpdate(); }
+});
 function endDrag(commit) {
   if (!drag) return;
   clearInterval(drag.timer);
@@ -459,8 +485,8 @@ function endDrag(commit) {
     setVisibleOrder(v);
   } else render();
 }
-$("list").addEventListener("pointerup", () => endDrag(true));
-$("list").addEventListener("pointercancel", () => endDrag(false));
+$("list").addEventListener("pointerup", () => { cancelPending(); endDrag(true); });
+$("list").addEventListener("pointercancel", () => { cancelPending(); endDrag(false); });
 
 function listText() {
   let n = 0;
