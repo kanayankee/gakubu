@@ -491,10 +491,7 @@ $("list").addEventListener("click", e => {
       setTimeout(() => { l.style.transition = ""; l.classList.remove("swapping"); }, 450);
     })));
   }
-  if (b.dataset.top) { // 最上位まで駆け上がる
-    moveEnd(b.dataset.top, true);
-    scrollTo({ top: Math.max(0, $("list").offsetTop - 90), behavior: "smooth" });
-  }
+  if (b.dataset.top) moveEnd(b.dataset.top, true); // 最上位まで駆け上がる(画面はスクロールしない)
   if (b.dataset.bottom) { // 下へ飛ばされて、後ろのカードがぬるっと詰めてくる → 最下位に着地
     const item = b.closest(".item"), row = item.closest(".row");
     if (item.classList.contains("fling")) return;
