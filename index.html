@@ -5,10 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>志望学部ならべかえ</title>
 <style>
-  :root { --bg:#f4f5f8; --card:#fff; --text:#1c1f24; --muted:#6b7280; --line:#e2e5ea; --accent:#2457c5; --accent-soft:#e8efff; --ng:#b42318; --ngbg:#fdf0ee; --off:#c9cdd5; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#12151a; --card:#1c2027; --text:#e8eaed; --muted:#9aa3af; --line:#2f3641; --accent:#7aa2ff; --accent-soft:#222c44; --ng:#ff8a80; --ngbg:#35201e; --off:#4a5260; }
-  }
+  :root { color-scheme: light; --bg:#f4f5f8; --card:#fff; --text:#1c1f24; --muted:#6b7280; --line:#e2e5ea; --accent:#2457c5; --accent-soft:#e8efff; --ng:#b42318; --ngbg:#fdf0ee; --off:#c9cdd5; }
   * { box-sizing:border-box; }
   html { -webkit-text-size-adjust:100%; }
   body { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
@@ -39,6 +36,11 @@
   .multi { font-size:12px; font-weight:400; color:var(--accent); background:var(--accent-soft); padding:1px 8px; border-radius:9px; margin-left:6px; }
   .chip:has(input:checked) { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
   .chip.none:has(input:checked) { background:var(--muted); border-color:var(--muted); }
+  /* Netlifyバッジのカスタム要素自体を非表示にする */
+  netlify-cms-widget,
+  [data-netlify-badge], #nl-badge-frame {
+    display: none !important;
+  }
   [hidden] { display:none !important; }
   .seg { display:flex; gap:6px; padding:10px 0; }
   .seg label { flex:1; text-align:center; padding:9px 0; border:1px solid var(--line); border-radius:10px; cursor:pointer; background:var(--bg); }
