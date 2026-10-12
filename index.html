@@ -83,6 +83,7 @@
   .line + .line { border-top:1px dashed var(--line); }
   .uni { font-size:12px; color:var(--muted); }
   .code { font-size:12px; color:var(--muted); margin-left:6px; }
+  .tiny { display:block; font-size:9px; line-height:1.2; color:var(--muted); font-weight:400; }
   .badge { display:inline-block; white-space:nowrap; font-size:11px; padding:0 7px; border-radius:9px; color:#fff; vertical-align:1px; }
   .badge.im { background:#7a3b8f; } .badge.kt { background:#2e7d4f; }
   .ni { width:16px; height:16px; vertical-align:-3px; }
@@ -135,7 +136,7 @@
     <div id="secEng" hidden>
     <h2>英語スコア(未受験は空欄)</h2>
     <div class="panel">
-      <div class="eng"><span>TOEIC L&amp;R</span><input type="number" id="toeic" placeholder="点"><span class="ym" data-for="toeic_d"></span></div>
+      <div class="eng"><span>TOEIC L&amp;R<small class="tiny">★学校で受けれたやつ</small></span><input type="number" id="toeic" placeholder="点"><span class="ym" data-for="toeic_d"></span></div>
       <div class="eng"><span>TOEFL iBT</span><input type="number" id="ibt" placeholder="点"><span class="ym" data-for="ibt_d"></span></div>
       <div class="eng"><span>TOEFL ITP</span><input type="number" id="itp" placeholder="点"><span class="ym" data-for="itp_d"></span></div>
       <div class="eng"><span>IELTS</span><input type="number" id="ielts" step="0.5" placeholder="点"><span class="ym" data-for="ielts_d"></span></div>
