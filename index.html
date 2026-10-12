@@ -84,6 +84,14 @@
   .uni { font-size:12px; color:var(--muted); }
   .code { font-size:12px; color:var(--muted); margin-left:6px; }
   .tiny { display:block; font-size:9px; line-height:1.2; color:var(--muted); font-weight:400; }
+  .btn.primary-s { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  .final { margin:0; padding-left:2em; -webkit-user-select:text; user-select:text; }
+  .final li { padding:3px 0; }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:20px; z-index:100; }
+  .modal-box { background:var(--card); border-radius:20px; padding:32px 24px 24px; max-width:420px; width:100%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.4); }
+  .modal-icon { font-size:48px; line-height:1; }
+  .modal-title { font-size:24px; font-weight:800; line-height:1.4; margin:14px 0 10px; color:var(--ng); }
+  .modal-sub { font-size:14px; color:var(--muted); margin:0 0 6px; }
   .badge { display:inline-block; white-space:nowrap; font-size:11px; padding:0 7px; border-radius:9px; color:#fff; vertical-align:1px; }
   .badge.im { background:#7a3b8f; } .badge.kt { background:#2e7d4f; }
   .ni { width:16px; height:16px; vertical-align:-3px; }
@@ -150,12 +158,29 @@
   </div>
 
   <div id="main2" hidden>
-    <div class="bar" style="margin-top:14px"><button class="btn small" id="back">← 条件を修正</button><button class="btn small" id="copy">結果をコピー</button></div>
-    <div id="copybox" hidden><p class="note">自動コピーできなかったため、下の文字を選択してコピーしてください。</p><textarea id="copytext" readonly></textarea></div>
+    <div class="bar" style="margin-top:14px"><button class="btn small" id="back">← 条件を修正</button><button class="btn small primary-s" id="confirm" style="margin-left:auto">この順番で確定 →</button></div>
     <p class="note"><svg class="ni" style="color:#d19a00" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 11H5L3 7zm2 13h14v2H5v-2z"/></svg>で1番上へ、<svg class="ni" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zM5 9h14l-1 11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 9zm4 2v8h2v-8H9zm4 0v8h2v-8h-2z"/></svg>で1番下へ移動します。</p>
     <div id="list"></div>
     <h2>出願条件を満たしていない学科</h2>
     <div id="ngList"></div>
+    <button class="btn primary-s" id="confirm2" style="display:block; margin:18px 0 0 auto; padding:13px 24px">この順番で確定 →</button>
+  </div>
+
+  <div id="modal" class="modal" hidden>
+    <div class="modal-box" role="dialog" aria-modal="true">
+      <div class="modal-icon">⚠️</div>
+      <p class="modal-title">学科コードや学科名は<br>進学のしおりで<br>必ず確認してください</p>
+      <p class="modal-sub">このアプリの掲載内容は正しいとは限りません。<br>利用による結果について、作成者は一切責任を負いません。</p>
+      <button class="btn primary" id="modalOk">続ける</button>
+    </div>
+  </div>
+
+  <div id="confirmScreen" hidden>
+    <h2>順番を確定しました</h2>
+    <div class="panel" style="padding:12px 14px"><ol id="finalList" class="final"></ol></div>
+    <button class="btn primary" id="copy">結果をコピー</button>
+    <div id="copybox" hidden><p class="note">自動コピーできなかったため、下の文字を選択してコピーしてください。</p><textarea id="copytext" readonly></textarea></div>
+    <div class="bar" style="margin-top:14px"><button class="btn small" id="backToEdit">← 並べ替えに戻る</button></div>
   </div>
 </main>
 <script>
@@ -578,7 +603,7 @@ $("list").addEventListener("pointercancel", () => { cancelPending(); endDrag(fal
 
 function listText() {
   let n = 0;
-  return visibleIds().flatMap(id => orderedCodes(unitById[id]).map(c => `${++n}. ${byCode[c][0] === "同志社女子大学" ? "(同女)" : ""}${byCode[c][1]} ${byCode[c][2]}`)).join("\n");
+  return visibleIds().flatMap(id => orderedCodes(unitById[id]).map(c => `${++n}. [${c}]${byCode[c][0] === "同志社女子大学" ? "(同女)" : ""}${byCode[c][1]} ${byCode[c][2]}`)).join("\n");
 }
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
@@ -593,7 +618,15 @@ $("copy").onclick = async () => {
   else { $("copybox").hidden = false; const ta = $("copytext"); ta.value = text; ta.focus(); ta.select(); }
 };
 
+function showConfirm(on) {
+  $("main2").hidden = on; $("confirmScreen").hidden = !on; window.scrollTo(0, 0);
+  if (on) $("finalList").innerHTML = listText().split("\n").map(l => `<li>${esc(l.replace(/^\d+\.\s*/, ""))}</li>`).join("");
+}
+$("confirm").onclick = $("confirm2").onclick = () => { $("modal").hidden = false; };
+$("modalOk").onclick = () => { $("modal").hidden = true; showConfirm(true); };
+$("backToEdit").onclick = () => showConfirm(false);
 function show(done) {
+  $("confirmScreen").hidden = true;
   $("survey").hidden = done; $("main2").hidden = !done; if (done) syncRanks(); window.scrollTo(0, 0);
   state.done = done; save();
 }
